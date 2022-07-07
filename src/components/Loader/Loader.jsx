@@ -5,7 +5,7 @@ import s from './loader.module.css';
 const Loader = () => {
   return (
     <div className={s.loader}>
-     <BallTriangle color="#00BFFF" height={80} width={80} />
+     <BallTriangle color="#84C3BE" height={80} width={80} />
     </div>
   );
 };

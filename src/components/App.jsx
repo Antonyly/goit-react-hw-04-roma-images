@@ -1,4 +1,4 @@
-import { Component } from "react";
+import { useState, useEffect} from "react";
 import s from './app.module.css';
 
 import { ToastContainer, toast } from 'react-toastify';
@@ -11,112 +11,87 @@ import Button from './Button';
 import Loader from './Loader';
 import { getPhotos } from '../shared/services/services';
 
+const App = () => {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState({});
+  const [error, setError] = useState(null);
 
-export default class App extends Component {
-  state = {
-    items: [],
-    loading: false,
-    search: '',
-    page: 1,
-    modalOpen: false,
-    modalContent: {},
-    error: null,
-  };
-
-
-      componentDidUpdate(prevProps, prevState) {
-        const { page, search } = this.state;
-        if (page > prevState.page || search !== prevState.search) {
-            this.fetchPhotos();
-        }
-      }
-
-  async fetchPhotos() {
-        this.setState({
-          loading: true,
-          error: null,
-        })
-        const { search, page } = this.state;
-        try {
-          const data = await getPhotos(search, page);
-           const totalPages = Math.ceil(data.totalHits / 12);
-
-            this.setState(({ items }) => {
-                return {
-                  items: [...items, ...data.hits],
-                }
-            })
-          if ( data.hits.length === 0) {
-          return toast.error('Sorry, no images found');
-          }
-          if (page === totalPages) {
-          toast.info("These are all pictures. Try entering something else in the field!");
-        }
-        } catch (error) {
-            this.setState({
-              error: error,
-            })
-        } finally {
-      this.setState({ loading: false });
-    }
-    }
-  
-  changeSearch = ({ search }) => {
-        this.setState({
-            search,
-            items: []
-        })
-    }
-  loadMore = () => {
-        this.setState(({ page }) => {
-            return {
-                page: page + 1
-            }
-        })
-    }
-
-  showModal = (url, tags) => {
-    this.setState({
-      modalOpen: true,
-      modalContent: {
-        src: url,
-        alt: tags,
-      },
-    });
-  };
-  
-  closeModal = () => {
-    this.setState({
-      modalOpen: false,
-    });
-  };
-  
-  render() {
-    const { items, loading, error, modalOpen, modalContent} = this.state;
-    const { loadMore, changeSearch, showModal, closeModal } = this;
-
-
-    return (
-      <div className={s.app}>
-      {modalOpen && (
-          <Modal closeModal={closeModal}>
-            <img
-              src={modalContent.src}
-              alt={modalContent.alt}
-            />
-          </Modal>
-        )}
-        <Searchbar onSubmit={changeSearch} />
-        {  error && <h2>The gallery is empty</h2>}
-
-        
-        {!error && (
-         <ImageGallery onClick={showModal} items={items} />
-        )}
-        {loading && <Loader />}
-        {!loading && items.length >= 12 && <Button onClick={loadMore} text="Load more" />}
-        <ToastContainer position="top-right" autoClose={5000} theme="dark"/>
-      </div>
-    );
+  const loadMore = () => {
+    setPage(prevPage => prevPage + 1)
   }
+
+  const changeSearch = (el) => {
+    if (el !== search) {
+      setSearch(el);
+      setItems([]);
+      setPage(1);
+    }
+  };
+  
+  const showModal = (url, tags) => {
+    setModalOpen(true)
+    setModalContent({
+      src: url,
+      alt: tags,
+    })
+  };
+  
+  const closeModal = () => {
+    setModalOpen(false)
+  };
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getPhotos(search, page);
+        const totalPages = Math.ceil(data.totalHits / 12);
+        setItems(prevState => {
+          return [...prevState, ...data.hits];
+        });
+        if (data.hits.length === 0) {
+          return toast.error('Sorry, no images found');
+        }
+        if (page === totalPages) {
+          return toast.info("These are all pictures. Try entering something else in the field!");
+        }
+      } catch (error) {
+        setError(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (search) {
+      fetchPosts();
+    }
+  }, [page, search]);
+
+  return (
+    
+    
+    <div className={s.app}>
+      {modalOpen && (
+        <Modal closeModal={closeModal}>
+          <img
+            src={modalContent.src}
+            alt={modalContent.alt}
+          />
+        </Modal>
+      )}
+      <Searchbar onSubmit={changeSearch} />
+      {!error && (
+        <ImageGallery onClick={showModal} items={items} />
+      )}
+      {loading && <Loader />}
+      {!loading && items.length >= 12 && <Button onClick={loadMore} text="Load more" />}
+      <ToastContainer position="top-right" autoClose={5000} theme="dark" />
+    </div>
+  );
 }
+
+export default App;
